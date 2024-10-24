@@ -29,7 +29,7 @@ type Batcher interface {
 	WithMaxBytes(uint64) Batcher
 	WithQueueSize(uint64) Batcher
 	WithCommitTimeout(time.Duration) Batcher
-	// spin entries processor thred
+	// spin entries processor thread
 	Run()
 }
 
