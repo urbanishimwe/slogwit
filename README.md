@@ -1,7 +1,7 @@
 # SLOGWIT
 Slog and quickwit.
 
-It uses batching techniques to push periodically to quickwit by implementing the follwoing interfaces:
+It uses batching techniques to push periodically to quickwit by implementing the following interfaces:
 
 ```go
 // Batcher holds pending items waiting to be sent to Quickwit, and it's used
