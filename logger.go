@@ -4,6 +4,10 @@ import (
 	"time"
 )
 
+// Logger object that use default settings for Batcher and Committer.
+// io.Writer method always returns the length of data params and an error returned from calling batcher.Write
+// that means an integer returned should be discarded.
+// Calling Close will close the batcher and the committer and return nil.
 func DefaultLogger(quickwitUrl, quickwitIndexId string) (Logger, error) {
 	committer, err := NewCommitter(quickwitUrl, quickwitIndexId)
 	if err != nil {
@@ -14,7 +18,10 @@ func DefaultLogger(quickwitUrl, quickwitIndexId string) (Logger, error) {
 	return &log{committer, NewBatcher(committer)}, nil
 }
 
-// if either committer or batcher is nil it returns nil object
+// If either committer or batcher is nil it returns a nil object.
+// io.Writer method always returns the length of data params and an error returned from calling batcher.Write
+// that means an integer returned should be discarded.
+// Calling Close will close the batcher and the committer and return nil.
 func NewLogger(committer Committer, batcher Batcher) Logger {
 	if committer == nil || batcher == nil {
 		return nil
@@ -23,7 +30,7 @@ func NewLogger(committer Committer, batcher Batcher) Logger {
 	return &log{committer, batcher}
 }
 
-// default Logger implementation
+// default Logger implementation.
 type log struct {
 	committer Committer
 	batcher   Batcher
