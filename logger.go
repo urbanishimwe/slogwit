@@ -18,13 +18,16 @@ func DefaultLogger(quickwitUrl, quickwitIndexId string) (Logger, error) {
 	return &log{committer, NewBatcher(committer)}, nil
 }
 
-// If either committer or batcher is nil it returns a nil object.
+// committer must not be nil. If batcher is nil it will use the default batcher.
 // io.Writer method always returns the length of data params and an error returned from calling batcher.Write
 // that means an integer returned should be discarded.
 // Calling Close will close the batcher and the committer and return nil.
 func NewLogger(committer Committer, batcher Batcher) Logger {
-	if committer == nil || batcher == nil {
+	if committer == nil {
 		return nil
+	}
+	if batcher == nil {
+		batcher = NewBatcher(committer)
 	}
 	batcher.Run()
 	return &log{committer, batcher}

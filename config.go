@@ -4,7 +4,12 @@ import (
 	"fmt"
 )
 
-func entryIndexDefaultConfig(indexId string) string {
+const defaultRetentionPeriod = "30 days"
+
+func entryIndexDefaultConfig(indexId, retentionPeriod string) string {
+	if retentionPeriod != "" {
+		retentionPeriod = fmt.Sprintf(`, "retention": {"period": %q}`, retentionPeriod)
+	}
 	return fmt.Sprintf(`{
   "version": "0.8",
   "index_id": %q,
@@ -42,10 +47,6 @@ func entryIndexDefaultConfig(indexId string) string {
       "payload",
       "labels"
     ]
-  },
-  "retention": {
-    "period": "30 days",
-    "schedule": "daily"
-  }
-}`, indexId)
+  }%s
+}`, indexId, retentionPeriod)
 }

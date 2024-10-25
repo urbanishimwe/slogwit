@@ -73,6 +73,20 @@ func TestCommitterWrite(t *testing.T) {
 
 }
 
+func TestCommitterWithNoRetention(t *testing.T) {
+	const indexId = "testing_index3"
+	if shouldSkip(t, indexId) {
+		return
+	}
+
+	// should create index
+	committer, err := NewCommitterWithRetentionPeriod(defaultTestQuickWitUrl, indexId, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	committer.Close()
+}
+
 // Check if quickwit is up and Delete index
 func shouldSkip(t *testing.T, indexId string) bool {
 	deleteUrl, _ := url.JoinPath(defaultTestQuickWitUrl, apiPrefix, "indexes", indexId)

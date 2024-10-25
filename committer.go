@@ -12,9 +12,16 @@ import (
 	"sync/atomic"
 )
 
-// error usually comes from initializing quickwit index
+// A quickwit committer with retention period set to 30 days.
+// error usually comes from initializing quickwit index.
 func NewCommitter(quickwitUrl, indexId string) (Committer, error) {
-	return newCommit(quickwitUrl, indexId)
+	return newCommit(quickwitUrl, indexId, defaultRetentionPeriod)
+}
+
+// Same as NewCommitter but with provided retention.
+// To disable retention set retentionPeriod to empty string.
+func NewCommitterWithRetentionPeriod(quickwitUrl, indexId, retentionPeriod string) (Committer, error) {
+	return newCommit(quickwitUrl, indexId, retentionPeriod)
 }
 
 const (
@@ -30,11 +37,11 @@ type commit struct {
 	closed    atomic.Bool
 }
 
-func newCommit(quickWitUrl string, indexId string) (Committer, error) {
+func newCommit(quickWitUrl, indexId, retentionPeriod string) (Committer, error) {
 	// trust Go team
 	client := &http.Client{}
 
-	err := initIndex(client, quickWitUrl, indexId)
+	err := initIndex(client, quickWitUrl, indexId, retentionPeriod)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +89,7 @@ func (c *commit) Close() error {
 	return nil
 }
 
-func initIndex(client *http.Client, quickwitUrl, indexId string) error {
+func initIndex(client *http.Client, quickwitUrl, indexId, retentionPeriod string) error {
 	// First Check if index already exist
 	exist, err := describeIndex(client, quickwitUrl, indexId)
 	if err != nil {
@@ -94,7 +101,7 @@ func initIndex(client *http.Client, quickwitUrl, indexId string) error {
 		return nil
 	}
 
-	return createIndex(client, quickwitUrl, indexId)
+	return createIndex(client, quickwitUrl, indexId, retentionPeriod)
 }
 
 func describeIndex(client *http.Client, quickwitUrl, indexId string) (exist bool, err error) {
@@ -132,10 +139,10 @@ func describeIndex(client *http.Client, quickwitUrl, indexId string) (exist bool
 	return false, fmt.Errorf("unexpected response from quickwit %d", resp.StatusCode)
 }
 
-func createIndex(client *http.Client, quickwitUrl, indexId string) error {
+func createIndex(client *http.Client, quickwitUrl, indexId, retentionPeriod string) error {
 	//format: host:port/api/v1/indexes
 	createIndexUrl, _ := url.JoinPath(quickwitUrl, apiPrefix, "indexes")
-	reqBody := bytes.NewReader([]byte(entryIndexDefaultConfig(indexId)))
+	reqBody := bytes.NewReader([]byte(entryIndexDefaultConfig(indexId, retentionPeriod)))
 	resp, err := client.Post(createIndexUrl, mime.TypeByExtension(".json"), reqBody)
 	if err != nil {
 		return err
