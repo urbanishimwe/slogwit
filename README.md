@@ -1,4 +1,4 @@
-# SLOGWIT
+# SLOGWIT [![Go Reference](https://pkg.go.dev/badge/github.com/urbanishimwe/slogwit.svg)](https://pkg.go.dev/github.com/urbanishimwe/slogwit)
 Slog and quickwit.
 
 It uses batching to reduce the number of push requests to Quickwit by aggregating multiple records in a single batch request.
