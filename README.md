@@ -1,37 +1,18 @@
 # SLOGWIT
 Slog and quickwit.
 
-It uses batching techniques to push periodically to quickwit by implementing the following interfaces:
+It uses batching to reduce the number of push requests to Quickwit by aggregating multiple records in a single batch request.
 
 ```go
-// Batcher holds pending items waiting to be sent to Quickwit, and it's used
-// to reduce the number of push requests to Quickwit aggregating multiple records
-// in a single batch request.
-type Batcher interface {
-	io.Closer
-	Write(Entry) error
-	WithMaxBytes(uint64) Batcher
-	WithQueueSize(uint64) Batcher
-	WithCommitTimeout(time.Duration) Batcher
-	// spin entries processor thread
-	Run()
+logger, err := slogwit.DefaultLogger(quickwitUrl, indexId)
+if err != nil {
+	return err
 }
+
+// You can start to use logger object
 ```
 
-
-```go
-// an ndjson CommitWriter that also implements io.Closer
-type Committer interface {
-	CommitWriter
-	io.Closer
-}
-
-// an interface for ndjson data writer(quickwit ingest)
-type CommitWriter interface {
-	Write(ndjsonData []byte, recordsCount int) (int, error)
-}
-```
-
+Logger is an object that implements the following method
 
 ```go
 // a standard logging interface

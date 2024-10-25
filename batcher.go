@@ -8,6 +8,19 @@ import (
 	"time"
 )
 
+// returns nil if commitPipe is not provided
+func NewBatcher(commitPipe CommitWriter) Batcher {
+	if commitPipe == nil {
+		return nil
+	}
+	return &batch{
+		maxBytes:      DefaultBatchMaxBytes,
+		commitTimeout: DefaultCommitTimeout,
+		entriesQueue:  make(chan *Entry, DefaultBatchEntriesQueueSize),
+		commitPipe:    commitPipe,
+	}
+}
+
 // the default batcher implementations. it expect commitPipe to always return a non-nil error.
 // After Close, write to batch will return io.ErrClosedPipe but buffered entries will be processed before returning completely.
 // Close will always return nil.
@@ -21,19 +34,6 @@ type batch struct {
 	mux           sync.RWMutex
 	closed        bool // to avoid writing on a closed channel
 	runOnce       sync.Once
-}
-
-// returns nil if commitPipe is not provided
-func NewBatcher(commitPipe CommitWriter) Batcher {
-	if commitPipe == nil {
-		return nil
-	}
-	return &batch{
-		maxBytes:      DefaultBatchMaxBytes,
-		commitTimeout: DefaultCommitTimeout,
-		entriesQueue:  make(chan *Entry, DefaultBatchEntriesQueueSize),
-		commitPipe:    commitPipe,
-	}
 }
 
 func (b *batch) WithMaxBytes(maxBytes uint64) Batcher {

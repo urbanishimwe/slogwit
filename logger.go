@@ -4,11 +4,22 @@ import (
 	"time"
 )
 
-// either committer or batcher is nil it returns nil object
+func DefaultLogger(quickwitUrl, quickwitIndexId string) (Logger, error) {
+	committer, err := NewCommitter(quickwitUrl, quickwitIndexId)
+	if err != nil {
+		return nil, err
+	}
+	batcher := NewBatcher(committer)
+	batcher.Run()
+	return &log{committer, NewBatcher(committer)}, nil
+}
+
+// if either committer or batcher is nil it returns nil object
 func NewLogger(committer Committer, batcher Batcher) Logger {
 	if committer == nil || batcher == nil {
 		return nil
 	}
+	batcher.Run()
 	return &log{committer, batcher}
 }
 

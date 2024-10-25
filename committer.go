@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"sync/atomic"
 )
 
+// error usually comes from initializing quickwit index
 func NewCommitter(quickwitUrl, indexId string) (Committer, error) {
 	return newCommit(quickwitUrl, indexId)
 }
@@ -21,7 +23,7 @@ const (
 )
 
 // A default implementation of committer. its simply an http client used to call quickwit REST API.
-// Committer may initialize index when creating new commiter instance
+// It will create an index(if not exists) when creating a new commiter instance.
 type commit struct {
 	client    *http.Client
 	ingestUrl string
@@ -30,13 +32,14 @@ type commit struct {
 
 func newCommit(quickWitUrl string, indexId string) (Committer, error) {
 	// trust Go team
-	client := http.DefaultClient
+	client := &http.Client{}
 
 	err := initIndex(client, quickWitUrl, indexId)
 	if err != nil {
 		return nil, err
 	}
 
+	// format: host:port/api/v1/indexId/ingest
 	ingestUrl, err := url.JoinPath(quickWitUrl, apiPrefix, indexId, "ingest")
 	if err != nil {
 		return nil, err
@@ -81,51 +84,81 @@ func (c *commit) Close() error {
 
 func initIndex(client *http.Client, quickwitUrl, indexId string) error {
 	// First Check if index already exist
-	describeIndexUrl, err := url.JoinPath(quickwitUrl, apiPrefix, "indexes", indexId, "describe")
+	exist, err := describeIndex(client, quickwitUrl, indexId)
 	if err != nil {
 		return err
 	}
-	resp, err := client.Get(describeIndexUrl)
-	if err != nil {
+
+	if exist {
+		// already exist
 		return nil
 	}
 
+	return createIndex(client, quickwitUrl, indexId)
+}
+
+func describeIndex(client *http.Client, quickwitUrl, indexId string) (exist bool, err error) {
+	// format: host:port/api/v1/indexes/indexId/describe
+	describeIndexUrl, err := url.JoinPath(quickwitUrl, apiPrefix, "indexes", indexId, "describe")
+	if err != nil {
+		return false, err
+	}
+	resp, err := client.Get(describeIndexUrl)
+	if err != nil {
+		return false, err
+	}
+
+	defer resp.Body.Close()
+
 	var respBody describeIndexResponse
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
-	resp.Body.Close()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if respBody.IndexId == indexId {
 		// index already exists
-		return nil
+		return true, nil
 	}
 
-	if resp.StatusCode != http.StatusNotFound {
-		return errors.New(respBody.Message)
+	if resp.StatusCode == http.StatusNotFound {
+		return false, nil
 	}
 
-	// Now create an index
+	if respBody.Message != "" {
+		return false, errors.New(respBody.Message)
+	}
+
+	return false, fmt.Errorf("unexpected response from quickwit %d", resp.StatusCode)
+}
+
+func createIndex(client *http.Client, quickwitUrl, indexId string) error {
+	//format: host:port/api/v1/indexes
 	createIndexUrl, _ := url.JoinPath(quickwitUrl, apiPrefix, "indexes")
 	reqBody := bytes.NewReader([]byte(entryIndexDefaultConfig(indexId)))
-	resp, err = client.Post(createIndexUrl, mime.TypeByExtension(".json"), reqBody)
+	resp, err := client.Post(createIndexUrl, mime.TypeByExtension(".json"), reqBody)
 	if err != nil {
 		return err
 	}
+
 	defer resp.Body.Close()
+
 	if resp.StatusCode == http.StatusOK {
 		return nil
 	}
 
 	// read an error from body
-	respBody = describeIndexResponse{}
+	respBody := describeIndexResponse{}
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	if err != nil {
 		return err
 	}
 
-	return errors.New(respBody.Message)
+	if respBody.Message != "" {
+		return errors.New(respBody.Message)
+	}
+
+	return fmt.Errorf("unexpected response from quickwit %d", resp.StatusCode)
 }
 
 type ingestResponse struct {
